@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/dutangp/docker-machine-driver-tmcloudstack"
+ "github.com/dutangp/docker-machine-driver-cloudstack"
  "github.com/docker/machine/libmachine/drivers/plugin"
 )
 
