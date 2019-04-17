@@ -309,8 +309,9 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	if d.DomainName == ""{
 		return &configError{option: "domainname"}
 	}
+	d.MachineName = d.MachineName + "." + d.DomainName
 	if d.DisplayName == "" {
-		d.DisplayName = d.MachineName + "." + d.DomainName
+		d.DisplayName = d.MachineName
 	}
 	d.SSHKeyPair = d.MachineName
 	if d.APIURL == "" {
@@ -412,8 +413,7 @@ func (d *Driver) Create() error {
 	//}
 	p := cs.VirtualMachine.NewDeployVirtualMachineParams(
 		d.ServiceOfferingID, d.TemplateID, d.ZoneID)
-	//p.SetName(d.MachineName)
-	p.SetName(d.DisplayName)
+	p.SetName(d.MachineName)
 	p.SetDisplayname(d.DisplayName)
 	p.SetHostname(d.DisplayName)
 	p.SetProductcode(d.ProductCode)
