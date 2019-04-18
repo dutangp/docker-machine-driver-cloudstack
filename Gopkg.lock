@@ -2,31 +2,72 @@
 
 
 [[projects]]
+  digest = "1:9dbcb8916adc4dcb3f0a8e2858111d88b19ee3f621e10db112390dd433d95c9b"
   name = "github.com/docker/docker"
   packages = ["pkg/term"]
+  pruneopts = ""
   revision = "a8a31eff10544860d2188dddabdee4d727545796"
   version = "v1.5.0"
 
 [[projects]]
+  digest = "1:41550d21435044c27309a05273f97fe7bab351eaa00029c43ada71dc3c4f8f01"
   name = "github.com/docker/machine"
-  packages = ["libmachine/drivers","libmachine/drivers/plugin","libmachine/drivers/plugin/localbinary","libmachine/drivers/rpc","libmachine/log","libmachine/mcnflag","libmachine/mcnutils","libmachine/ssh","libmachine/state","libmachine/version","version"]
+  packages = [
+    "libmachine/drivers",
+    "libmachine/drivers/plugin",
+    "libmachine/drivers/plugin/localbinary",
+    "libmachine/drivers/rpc",
+    "libmachine/log",
+    "libmachine/mcnflag",
+    "libmachine/mcnutils",
+    "libmachine/ssh",
+    "libmachine/state",
+    "libmachine/version",
+    "version",
+  ]
+  pruneopts = ""
   revision = "a650a404fc3e006fea17b12615266168db79c776"
   version = "v0.7.0"
 
 [[projects]]
-  name = "github.com/xanzy/go-cloudstack"
+  branch = "master"
+  digest = "1:28e0faf2a154950df895471260b0faf7da3ad977343cbc62069be0a92c27b3b5"
+  name = "github.com/dutangp/go-cloudstack"
   packages = ["cloudstack"]
-  revision = "deca6e17c056012b540aa2d2eae3ea1e63203b85"
-  version = "v2.1.6"
+  pruneopts = ""
+  revision = "e1b6af040a29bf6492c8e6b3787e50ca31621048"
 
 [[projects]]
+  digest = "1:1d7e1867c49a6dd9856598ef7c3123604ea3daabf5b83f303ff457bcbc410b1d"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = ""
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
+
+[[projects]]
+  digest = "1:6586399f3db6d596401c67b272ee24e6aedf2e9d5c0f057638287b8e122617b1"
   name = "golang.org/x/crypto"
-  packages = ["curve25519","ssh","ssh/terminal"]
+  packages = [
+    "curve25519",
+    "ssh",
+    "ssh/terminal",
+  ]
+  pruneopts = ""
   revision = "beef0f4390813b96e8e68fd78570396d0f4751fc"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2284c20701ae15f7bd01a2cf287f2d4b429fc3bdada108bdbb019b245dca1693"
+  input-imports = [
+    "github.com/docker/machine/libmachine/drivers",
+    "github.com/docker/machine/libmachine/drivers/plugin",
+    "github.com/docker/machine/libmachine/log",
+    "github.com/docker/machine/libmachine/mcnflag",
+    "github.com/docker/machine/libmachine/ssh",
+    "github.com/docker/machine/libmachine/state",
+    "github.com/dutangp/go-cloudstack/cloudstack",
+    "github.com/pkg/errors",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

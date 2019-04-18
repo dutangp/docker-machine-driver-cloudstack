@@ -47,7 +47,7 @@ type Driver struct {
 	PublicIPID           string
 	DisassociatePublicIP bool
 	SSHKeyPair           string
-	SSHKeyPath           string
+	// SSHKeyPath           string
 	PrivateIP            string
 	CIDRList             []string
 	FirewallRuleIds      []string
@@ -253,12 +253,12 @@ func (d *Driver) GetSSHUsername() string {
 	return d.SSHUser
 }
 
-func (d *Driver) GetSSHKeyPath() string {
-	if d.SSHKeyPath == "" {
-		d.SSHKeyPath = "~/.ssh/id_rsa"
-	}
-	return d.SSHKeyPath
-}
+// func (d *Driver) GetSSHKeyPath() string {
+// 	if d.SSHKeyPath == "" {
+// 		d.SSHKeyPath = "~/.ssh/id_rsa"
+// 	}
+// 	return d.SSHKeyPath
+// }
 
 // SetConfigFromFlags configures the driver with the object that was returned
 // by RegisterCreateFlags
@@ -271,7 +271,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.HTTPGETOnly = flags.Bool("cloudstack-http-get-only")
 	d.JobTimeOut = int64(flags.Int("cloudstack-timeout"))
 	d.SSHUser = flags.String("cloudstack-ssh-user")
-	d.SSHKeyPath = flags.String("cloudstack-ssh-keypath")
+	//d.SSHKeyPath = flags.String("cloudstack-ssh-keypath")
 	d.CIDRList = flags.StringSlice("cloudstack-cidr")
 	d.Expunge = flags.Bool("cloudstack-expunge")
 	d.Tags = flags.StringSlice("cloudstack-resource-tag")
@@ -311,7 +311,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	}
 	d.MachineName = d.MachineName + "." + d.DomainName
 	if d.DisplayName == "" {
-		d.DisplayName = d.MachineName
+	 d.DisplayName = d.MachineName
 	}
 	d.SSHKeyPair = d.MachineName
 	if d.APIURL == "" {
@@ -397,9 +397,9 @@ func (d *Driver) GetState() (state.State, error) {
 
 // PreCreateCheck allows for pre-create operations to make sure a driver is ready for creation
 func (d *Driver) PreCreateCheck() error {
-	//if err := d.checkKeyPair(); err != nil {
-	//	return err
-	//}
+	// if err := d.checkKeyPair(); err != nil {
+	// 	return err
+	// }
 
 	return d.checkInstance()
 }
@@ -408,17 +408,17 @@ func (d *Driver) PreCreateCheck() error {
 func (d *Driver) Create() error {
 	cs := d.getClient()
 
-	//if err := d.createKeyPair(); err != nil {
-	//	return err
-	//}
+	// if err := d.createKeyPair(); err != nil {
+	// 	return err
+	// }
 	p := cs.VirtualMachine.NewDeployVirtualMachineParams(
 		d.ServiceOfferingID, d.TemplateID, d.ZoneID)
-	p.SetName(d.MachineName)
+	p.SetName(d.DisplayName)
 	p.SetDisplayname(d.DisplayName)
-	p.SetHostname(d.DisplayName)
 	p.SetProductcode(d.ProductCode)
-	//log.Infof("Setting Keypair for VM: %s", d.SSHKeyPair)
-	//p.SetKeypair(d.SSHKeyPair)
+	p.SetHostname(d.DisplayName)
+	log.Infof("Setting Keypair for VM: %s", d.SSHKeyPair)
+	p.SetKeypair(d.SSHKeyPair)
 	if d.UserData != "" {
 		p.SetUserdata(d.UserData)
 	}
@@ -448,6 +448,7 @@ func (d *Driver) Create() error {
 
 	d.ID = vm.Id
 	d.PrivateIP = d.DisplayName
+	d.PublicIP = d.PrivateIP
 	// if d.NetworkType == "Basic" {
 	// 	d.PublicIP = d.PrivateIP
 	// }
