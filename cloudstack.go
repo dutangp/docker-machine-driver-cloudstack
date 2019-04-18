@@ -47,6 +47,7 @@ type Driver struct {
 	PublicIPID           string
 	DisassociatePublicIP bool
 	SSHKeyPair           string
+	// SSHKeyPath           string
 	PrivateIP            string
 	CIDRList             []string
 	FirewallRuleIds      []string
@@ -122,12 +123,12 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Value:  "root",
 			EnvVar: "CLOUDSTACK_SSH_USER",
 		},
-		mcnflag.StringFlag{
-			Name:   "cloudstack-ssh-keypath",
-			Usage:  "CloudStack SSH KeyPath",
-			Value:  "~/.ssh/id_rsa",
-			EnvVar: "CLOUDSTACK_SSH_KEYPATH",
-		},
+		// mcnflag.StringFlag{
+		// 	Name:   "cloudstack-ssh-keypath",
+		// 	Usage:  "CloudStack SSH KeyPath",
+		// 	Value:  "~/.ssh/id_rsa",
+		// 	EnvVar: "CLOUDSTACK_SSH_KEYPATH",
+		// },
 		mcnflag.StringSliceFlag{
 			Name:  "cloudstack-cidr",
 			Usage: "Source CIDR to give access to the machine. default 0.0.0.0/0",
@@ -252,6 +253,13 @@ func (d *Driver) GetSSHUsername() string {
 	return d.SSHUser
 }
 
+// func (d *Driver) GetSSHKeyPath() string {
+// 	if d.SSHKeyPath == "" {
+// 		d.SSHKeyPath = "~/.ssh/id_rsa"
+// 	}
+// 	return d.SSHKeyPath
+// }
+
 // SetConfigFromFlags configures the driver with the object that was returned
 // by RegisterCreateFlags
 func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
@@ -263,6 +271,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.HTTPGETOnly = flags.Bool("cloudstack-http-get-only")
 	d.JobTimeOut = int64(flags.Int("cloudstack-timeout"))
 	d.SSHUser = flags.String("cloudstack-ssh-user")
+	//d.SSHKeyPath = flags.String("cloudstack-ssh-keypath")
 	d.CIDRList = flags.StringSlice("cloudstack-cidr")
 	d.Expunge = flags.Bool("cloudstack-expunge")
 	d.Tags = flags.StringSlice("cloudstack-resource-tag")
