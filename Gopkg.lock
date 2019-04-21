@@ -30,6 +30,14 @@
   version = "v0.7.0"
 
 [[projects]]
+  digest = "1:b7bd35fac5fa82d544fe31bb0e7e622051f5357726fbe65350a31759638ab443"
+  name = "github.com/dutangp/docker-machine-driver-cloudstack"
+  packages = ["."]
+  pruneopts = ""
+  revision = "eacb137441fd5be4763d04f0066d6796719c5672"
+  version = "v0.1.6"
+
+[[projects]]
   branch = "master"
   digest = "1:28e0faf2a154950df895471260b0faf7da3ad977343cbc62069be0a92c27b3b5"
   name = "github.com/dutangp/go-cloudstack"
@@ -66,6 +74,7 @@
     "github.com/docker/machine/libmachine/mcnflag",
     "github.com/docker/machine/libmachine/ssh",
     "github.com/docker/machine/libmachine/state",
+    "github.com/dutangp/docker-machine-driver-cloudstack",
     "github.com/dutangp/go-cloudstack/cloudstack",
     "github.com/pkg/errors",
   ]

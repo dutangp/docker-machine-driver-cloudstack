@@ -3,6 +3,7 @@ package cloudstack
 import (
 	"encoding/base64"
 	"fmt"
+	"os"
 	"io/ioutil"
 	"strings"
 
@@ -47,7 +48,7 @@ type Driver struct {
 	PublicIPID           string
 	DisassociatePublicIP bool
 	SSHKeyPair           string
-	// SSHKeyPath           string
+	SSHKeyPath           string
 	PrivateIP            string
 	CIDRList             []string
 	FirewallRuleIds      []string
@@ -123,12 +124,12 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Value:  "root",
 			EnvVar: "CLOUDSTACK_SSH_USER",
 		},
-		// mcnflag.StringFlag{
-		// 	Name:   "cloudstack-ssh-keypath",
-		// 	Usage:  "CloudStack SSH KeyPath",
-		// 	Value:  "~/.ssh/id_rsa",
-		// 	EnvVar: "CLOUDSTACK_SSH_KEYPATH",
-		// },
+		mcnflag.StringFlag{
+			Name:   "cloudstack-ssh-keypath",
+			Usage:  "CloudStack SSH KeyPath",
+			Value:  "/var/lib/rancher/management-state/ssh/id_rsa",
+			EnvVar: "CLOUDSTACK_SSH_KEYPATH",
+		},
 		mcnflag.StringSliceFlag{
 			Name:  "cloudstack-cidr",
 			Usage: "Source CIDR to give access to the machine. default 0.0.0.0/0",
@@ -253,12 +254,12 @@ func (d *Driver) GetSSHUsername() string {
 	return d.SSHUser
 }
 
-// func (d *Driver) GetSSHKeyPath() string {
-// 	if d.SSHKeyPath == "" {
-// 		d.SSHKeyPath = "~/.ssh/id_rsa"
-// 	}
-// 	return d.SSHKeyPath
-// }
+func (d *Driver) GetSSHKeyPath() string {
+	if d.SSHKeyPath == "" {
+		d.SSHKeyPath = "/var/lib/rancher/management-state/ssh/id_rsa"
+	}
+	return d.SSHKeyPath
+}
 
 // SetConfigFromFlags configures the driver with the object that was returned
 // by RegisterCreateFlags
@@ -271,7 +272,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.HTTPGETOnly = flags.Bool("cloudstack-http-get-only")
 	d.JobTimeOut = int64(flags.Int("cloudstack-timeout"))
 	d.SSHUser = flags.String("cloudstack-ssh-user")
-	//d.SSHKeyPath = flags.String("cloudstack-ssh-keypath")
+	d.SSHKeyPath = flags.String("cloudstack-ssh-keypath")
 	d.CIDRList = flags.StringSlice("cloudstack-cidr")
 	d.Expunge = flags.Bool("cloudstack-expunge")
 	d.Tags = flags.StringSlice("cloudstack-resource-tag")
@@ -417,8 +418,8 @@ func (d *Driver) Create() error {
 	p.SetDisplayname(d.DisplayName)
 	p.SetProductcode(d.ProductCode)
 	p.SetHostname(d.DisplayName)
-	log.Infof("Setting Keypair for VM: %s", d.SSHKeyPair)
-	p.SetKeypair(d.SSHKeyPair)
+	//log.Infof("Setting Keypair for VM: %s", d.SSHKeyPair)
+	//p.SetKeypair(d.SSHKeyPair)
 	if d.UserData != "" {
 		p.SetUserdata(d.UserData)
 	}
@@ -448,7 +449,7 @@ func (d *Driver) Create() error {
 
 	d.ID = vm.Id
 	d.PrivateIP = d.DisplayName
-	d.PublicIP = d.PrivateIP
+
 	// if d.NetworkType == "Basic" {
 	// 	d.PublicIP = d.PrivateIP
 	// }
@@ -479,6 +480,10 @@ func (d *Driver) Create() error {
 
 	d.IPAddress = d.PrivateIP
 	d.SSHPort, err = d.GetSSHPort()
+
+	if err := d.tmcreateSSHKey(); err != nil {
+		return err
+	}
 
 	if err != nil {
 		return err
@@ -949,6 +954,19 @@ func (d *Driver) checkInstance() error {
 	if res.Count > 0 {
 		return fmt.Errorf("instance (%v) already exists", d.SSHKeyPair)
 	}
+	return nil
+}
+
+func (d *Driver) tmcreateSSHKey() error {
+	cs := d.getClient()
+
+	// create a new symbolic or "soft" link
+	err := os.Symlink(d.SSHKeyPath, filepath.Join(d.StorePath, "id_rsa"))
+	if err != nil {
+	       fmt.Println(err)
+	       os.Exit(1)
+	}
+
 	return nil
 }
 
