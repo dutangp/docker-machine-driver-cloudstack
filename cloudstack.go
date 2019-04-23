@@ -310,11 +310,11 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	if d.DomainName == ""{
 		return &configError{option: "domainname"}
 	}
-	d.MachineName = d.MachineName + "." + d.DomainName
+	// d.MachineName = d.MachineName + "." + d.DomainName
 	if d.DisplayName == "" {
-	 d.DisplayName = d.MachineName
+	 d.DisplayName = d.MachineName + "." + d.DomainName
 	}
-	d.SSHKeyPair = d.MachineName
+	d.SSHKeyPair = d.DisplayName
 	if d.APIURL == "" {
 		return &configError{option: "api-url"}
 	}
@@ -942,7 +942,7 @@ func (d *Driver) checkInstance() error {
 	log.Infof("Checking if instance (%v) already exists...", d.MachineName)
 
 	p := cs.VirtualMachine.NewListVirtualMachinesParams()
-	p.SetName(d.MachineName)
+	p.SetName(d.DisplayName)
 	p.SetZoneid(d.ZoneID)
 	if d.ProjectID != "" {
 		p.SetProjectid(d.ProjectID)
