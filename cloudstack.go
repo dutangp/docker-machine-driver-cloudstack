@@ -3,10 +3,8 @@ package cloudstack
 import (
 	"encoding/base64"
 	"fmt"
-	"os"
 	"io/ioutil"
 	"strings"
-
 	"crypto/md5"
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/log"
@@ -48,7 +46,7 @@ type Driver struct {
 	PublicIPID           string
 	DisassociatePublicIP bool
 	SSHKeyPair           string
-	SSHKeyPath           string
+	SSHPublickey         string
 	PrivateIP            string
 	CIDRList             []string
 	FirewallRuleIds      []string
@@ -71,7 +69,7 @@ type Driver struct {
 	Project              string
 	ProjectID            string
 	Tags                 []string
-	DomainName          string
+	DomainName           string
 	DisplayName          string
 	ProductCode          string
 }
@@ -125,10 +123,10 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			EnvVar: "CLOUDSTACK_SSH_USER",
 		},
 		mcnflag.StringFlag{
-			Name:   "cloudstack-ssh-keypath",
-			Usage:  "CloudStack SSH KeyPath",
+			Name:   "cloudstack-ssh-publickey",
+			Usage:  "CloudStack SSH publickey",
 			Value:  "/var/lib/rancher/management-state/ssh/id_rsa",
-			EnvVar: "CLOUDSTACK_SSH_KEYPATH",
+			EnvVar: "CLOUDSTACK_SSH_KEYKEY",
 		},
 		mcnflag.StringSliceFlag{
 			Name:  "cloudstack-cidr",
@@ -241,6 +239,14 @@ func (d *Driver) DriverName() string {
 	return driverName
 }
 
+func (d *Driver) GetMachineName() string {
+	if d.DisplayName == "" {
+		return d.MachineName
+	} else {
+		return d.DisplayName
+	}
+}
+
 // GetSSHHostname sets hostname to the host ip
 func (d *Driver) GetSSHHostname() (string, error) {
 	return d.GetIP()
@@ -254,11 +260,11 @@ func (d *Driver) GetSSHUsername() string {
 	return d.SSHUser
 }
 
-func (d *Driver) GetSSHKeyPath() string {
-	if d.SSHKeyPath == "" {
-		d.SSHKeyPath = "/var/lib/rancher/management-state/ssh/id_rsa"
+func (d *Driver) GetSSHPublickey() string {
+	if d.SSHPublickey == "" {
+		d.SSHPublickey = "/var/lib/rancher/management-state/ssh/id_rsa"
 	}
-	return d.SSHKeyPath
+	return d.SSHPublickey
 }
 
 // SetConfigFromFlags configures the driver with the object that was returned
@@ -272,7 +278,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.HTTPGETOnly = flags.Bool("cloudstack-http-get-only")
 	d.JobTimeOut = int64(flags.Int("cloudstack-timeout"))
 	d.SSHUser = flags.String("cloudstack-ssh-user")
-	d.SSHKeyPath = flags.String("cloudstack-ssh-keypath")
+	d.SSHPublickey = flags.String("cloudstack-ssh-publickey")
 	d.CIDRList = flags.StringSlice("cloudstack-cidr")
 	d.Expunge = flags.Bool("cloudstack-expunge")
 	d.Tags = flags.StringSlice("cloudstack-resource-tag")
@@ -481,7 +487,7 @@ func (d *Driver) Create() error {
 	d.IPAddress = d.PrivateIP
 	d.SSHPort, err = d.GetSSHPort()
 
-	if err := d.tmcreateSSHKey(); err != nil {
+	if err := d.tmcopySSHKey(); err != nil {
 		return err
 	}
 
@@ -957,14 +963,23 @@ func (d *Driver) checkInstance() error {
 	return nil
 }
 
-func (d *Driver) tmcreateSSHKey() error {
-	cs := d.getClient()
+func (d *Driver) tmcopySSHKey() error {
+	var destinationFile string
+	destinationFile = "/var/lib/rancher/management-state/node/nodes/" + d.MachineName + "/machines/" + d.MachineName + "/id_rsa"
 
-	// create a new symbolic or "soft" link
-	err := os.Symlink(d.SSHKeyPath, filepath.Join(d.StorePath, "id_rsa"))
+	var sourceFile string
+	sourceFile = d.SSHPublickey
+
+	log.Infof("Copy SSH public key...")
+
+	input, err := ioutil.ReadFile(sourceFile)
 	if err != nil {
-	       fmt.Println(err)
-	       os.Exit(1)
+		return err
+	}
+
+	err = ioutil.WriteFile(destinationFile, input, 0600)
+	if err != nil {
+		return fmt.Errorf("Error creating file", err)
 	}
 
 	return nil
