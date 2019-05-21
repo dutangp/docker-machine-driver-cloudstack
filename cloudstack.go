@@ -17,6 +17,7 @@ import (
 	"github.com/dutangp/go-cloudstack/cloudstack"
 	"net/http"
 	"crypto/tls"
+	"math/rand"
 )
 
 const (
