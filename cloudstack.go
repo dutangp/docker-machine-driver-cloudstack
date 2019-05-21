@@ -466,7 +466,7 @@ func (d *Driver) PostInfoblox(url string, data []byte) error {
 	req.SetBasicAuth(d.IBuser, d.IBpassword)
 
 	// Set client timeout
-	client := &http.Client{Timeout: time.Second * 10, Transport: tr}
+	client := &http.Client{Timeout: time.Second * 30, Transport: tr}
 
 	// Send request
 	resp, err := client.Do(req)
@@ -482,6 +482,11 @@ func (d *Driver) PostInfoblox(url string, data []byte) error {
 	}
 
 	log.Debugf("%s\n", body)
+
+	rand.Seed(time.Now().UnixNano())
+ n := rand.Intn(10) // n will be between 0 and 10
+ log.Info("Sleeping %d seconds...", n)
+ time.Sleep(time.Duration(n)*time.Second)
 
 	return nil
 }
@@ -607,6 +612,7 @@ func (d *Driver) Create() error {
 	 }
  }
 
+	log.Info("Starting CloudStack instance...")
 	if err := d.Start(); err != nil {
 	 return err
  }
