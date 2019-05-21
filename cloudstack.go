@@ -2,6 +2,8 @@ package cloudstack
 
 import (
 	"encoding/base64"
+	"bytes"
+	"time"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -14,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/dutangp/go-cloudstack/cloudstack"
 	"net/http"
+	"crypto/tls"
 )
 
 const (
@@ -38,6 +41,8 @@ type Driver struct {
 	APIURL               string
 	APIKey               string
 	SecretKey            string
+	IBuser															string
+	IBpassword											string
 	HTTPGETOnly          bool
 	JobTimeOut           int64
 	UsePrivateIP         bool
@@ -45,8 +50,10 @@ type Driver struct {
 	PublicIP             string
 	PublicIPID           string
 	DisassociatePublicIP bool
+ MacAddress           string
 	SSHKeyPair           string
 	SSHPublickey         string
+	SSHManage            bool
 	PrivateIP            string
 	CIDRList             []string
 	FirewallRuleIds      []string
@@ -59,6 +66,7 @@ type Driver struct {
 	DiskOffering         string
 	DiskOfferingID       string
 	DiskSize             int
+	DiskRootSize									int
 	Network              string
 	NetworkID            string
 	Zone                 string
@@ -92,6 +100,16 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:   "cloudstack-secret-key",
 			Usage:  "CloudStack API secret key",
 			EnvVar: "CLOUDSTACK_SECRET_KEY",
+		},
+		mcnflag.StringFlag{
+			Name:   "cloudstack-infoblox-user",
+			Usage:  "CloudStack Infoblox user",
+			EnvVar: "CLOUDSTACK_INFOBLOX_USER",
+		},
+		mcnflag.StringFlag{
+			Name:   "cloudstack-infoblox-password",
+			Usage:  "CloudStack Infoblox password",
+			EnvVar: "CLOUDSTACK_INFOBLOX_PASSWORD",
 		},
 		mcnflag.BoolFlag{
 			Name:   "cloudstack-http-get-only",
@@ -128,6 +146,10 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Value:  "/var/lib/rancher/management-state/ssh/id_rsa",
 			EnvVar: "CLOUDSTACK_SSH_KEYKEY",
 		},
+    mcnflag.BoolFlag{
+      Name:   "cloudstack-ssh-manage",
+      Usage:  "CloudStack SSH Management",
+    },
 		mcnflag.StringSliceFlag{
 			Name:  "cloudstack-cidr",
 			Usage: "Source CIDR to give access to the machine. default 0.0.0.0/0",
@@ -203,6 +225,11 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "Disk offering custom size",
 			EnvVar: "CLOUDSTACK_CUSTOM_DISK_SIZE",
 		},
+		mcnflag.IntFlag{
+			Name:   "cloudstack-root-disk-size",
+			Usage:  "Disk Root size",
+			EnvVar: "CLOUDSTACK_ROOT_DISK_SIZE",
+		},
 		mcnflag.BoolFlag{
 			Name:  "cloudstack-delete-volumes",
 			Usage: "Whether or not to delete data volumes associated with the machine upon removal",
@@ -273,17 +300,21 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.APIURL = flags.String("cloudstack-api-url")
 	d.APIKey = flags.String("cloudstack-api-key")
 	d.SecretKey = flags.String("cloudstack-secret-key")
+	d.IBuser = flags.String("cloudstack-infoblox-user")
+	d.IBpassword = flags.String("cloudstack-infoblox-password")
 	d.UsePrivateIP = flags.Bool("cloudstack-use-private-address")
 	d.UsePortForward = flags.Bool("cloudstack-use-port-forward")
 	d.HTTPGETOnly = flags.Bool("cloudstack-http-get-only")
 	d.JobTimeOut = int64(flags.Int("cloudstack-timeout"))
 	d.SSHUser = flags.String("cloudstack-ssh-user")
 	d.SSHPublickey = flags.String("cloudstack-ssh-publickey")
+	d.SSHManage = flags.Bool("cloudstack-ssh-manage")
 	d.CIDRList = flags.StringSlice("cloudstack-cidr")
 	d.Expunge = flags.Bool("cloudstack-expunge")
 	d.Tags = flags.StringSlice("cloudstack-resource-tag")
 	d.DeleteVolumes = flags.Bool("cloudstack-delete-volumes")
 	d.DiskSize = flags.Int("cloudstack-disk-size")
+	d.DiskRootSize = flags.Int("cloudstack-root-disk-size")
 	d.DisplayName = flags.String("cloudstack-displayname")
 	d.DomainName = flags.String("cloudstack-domainname")
 	d.ProductCode = flags.String("cloudstack-productcode")
@@ -316,7 +347,6 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	if d.DomainName == ""{
 		return &configError{option: "domainname"}
 	}
-	// d.MachineName = d.MachineName + "." + d.DomainName
 	if d.DisplayName == "" {
 	 d.DisplayName = d.MachineName + "." + d.DomainName
 	}
@@ -329,6 +359,12 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	}
 	if d.SecretKey == "" {
 		return &configError{option: "secret-key"}
+	}
+	if d.IBuser == "" {
+		return &configError{option: "infoblox-user"}
+	}
+	if d.IBpassword == "" {
+		return &configError{option: "infoblox-password"}
 	}
 	if d.Template == "" {
 		return &configError{option: "template"}
@@ -411,6 +447,45 @@ func (d *Driver) PreCreateCheck() error {
 	return d.checkInstance()
 }
 
+func (d *Driver) PostInfoblox(url string, data []byte) error {
+
+	log.Debugf("Json send %s\n", data)
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	if err != nil {
+		log.Warnf("Error reading request. ", err)
+	}
+
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+
+	req.SetBasicAuth(d.IBuser, d.IBpassword)
+
+	// Set client timeout
+	client := &http.Client{Timeout: time.Second * 10, Transport: tr}
+
+	// Send request
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Warnf("Error reading response. ", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Warnf("Error reading body. ", err)
+	}
+
+	log.Debugf("%s\n", body)
+
+	return nil
+}
+
 // Create a host using the driver's config
 func (d *Driver) Create() error {
 	cs := d.getClient()
@@ -420,9 +495,14 @@ func (d *Driver) Create() error {
 	// }
 	p := cs.VirtualMachine.NewDeployVirtualMachineParams(
 		d.ServiceOfferingID, d.TemplateID, d.ZoneID)
-	p.SetName(d.DisplayName)
+	p.SetName(strings.Replace(d.DisplayName, ".", "-", -1))
 	p.SetDisplayname(d.DisplayName)
-	p.SetProductcode(d.ProductCode)
+
+	d.Tags = append(d.Tags,"environment:production")
+	d.Tags = append(d.Tags,"product:" + d.ProductCode)
+	d.Tags = append(d.Tags,"productcode:" + d.ProductCode)
+	d.Tags = append(d.Tags,"techorg:intl")
+
 	p.SetHostname(d.DisplayName)
 	//log.Infof("Setting Keypair for VM: %s", d.SSHKeyPair)
 	//p.SetKeypair(d.SSHKeyPair)
@@ -441,12 +521,17 @@ func (d *Driver) Create() error {
 			p.SetSize(int64(d.DiskSize))
 		}
 	}
+	if d.DiskRootSize != 0 {
+		p.SetRootdisksize(int64(d.DiskRootSize))
+	}
 	if d.NetworkType == "Basic" {
 		if err := d.createSecurityGroup(); err != nil {
 			return err
 		}
 		p.SetSecuritygroupnames([]string{d.MachineName})
 	}
+ p.SetStartvm(false)
+
 	log.Info("Creating CloudStack instance...")
 	vm, err := cs.VirtualMachine.DeployVirtualMachine(p)
 	if err != nil {
@@ -455,6 +540,35 @@ func (d *Driver) Create() error {
 
 	d.ID = vm.Id
 	d.PrivateIP = d.DisplayName
+	d.MacAddress = vm.Nic[0].Macaddress
+
+	// Add IP to Infoblox
+	log.Info("Add the Machine in Infoblox...")
+	url := "https://dns.cloudsys.tmcs/wapi/v2.7.3/record:host?_return_fields%2B=name,ipv4addrs&_return_as_object=1"
+
+	data := []byte(`{
+		"name":"`+d.DisplayName+`",
+		"ipv4addrs":[{
+			"ipv4addr":"func:nextavailableip:`+d.Network+`,default",
+			"mac":"`+d.MacAddress+`"
+		}]
+	}`)
+
+	if err := d.PostInfoblox(url, data); err != nil {
+		return err
+	}
+
+	// Restart Infoblox
+	log.Info("Restarting Infoblox...")
+	url = "https://dns.cloudsys.tmcs/wapi/v2.7.3/grid/b25lLmNsdXN0ZXIkMA:syseng?_function=restartservices"
+
+	data = []byte(`{"member_order" : "SIMULTANEOUSLY","service_option": "ALL"}`)
+
+	if err := d.PostInfoblox(url, data); err != nil {
+		return err
+	}
+
+	time.Sleep(10 * time.Second)
 
 	// if d.NetworkType == "Basic" {
 	// 	d.PublicIP = d.PrivateIP
@@ -487,9 +601,15 @@ func (d *Driver) Create() error {
 	d.IPAddress = d.PrivateIP
 	d.SSHPort, err = d.GetSSHPort()
 
-	if err := d.tmcopySSHKey(); err != nil {
-		return err
-	}
+	if d.SSHManage {
+  if err := d.tmcopySSHKey(); err != nil {
+		 return err
+	 }
+ }
+
+	if err := d.Start(); err != nil {
+	 return err
+ }
 
 	if err != nil {
 		return err

@@ -2,15 +2,29 @@
 
 
 [[projects]]
-  digest = "1:9dbcb8916adc4dcb3f0a8e2858111d88b19ee3f621e10db112390dd433d95c9b"
-  name = "github.com/docker/docker"
-  packages = ["pkg/term"]
+  branch = "master"
+  digest = "1:6978a38432a017763a148afbc7ce6491734b54292af7d3e969d84d2e9dd242e2"
+  name = "github.com/Azure/go-ansiterm"
+  packages = [
+    ".",
+    "winterm",
+  ]
   pruneopts = ""
-  revision = "a8a31eff10544860d2188dddabdee4d727545796"
-  version = "v1.5.0"
+  revision = "d6e3b3328b783f23731bc4d058875b0371ff8109"
 
 [[projects]]
-  digest = "1:41550d21435044c27309a05273f97fe7bab351eaa00029c43ada71dc3c4f8f01"
+  branch = "master"
+  digest = "1:36efdffc1f599f2995eccf57815f59940346135f457871ee34afa18f64da31c3"
+  name = "github.com/docker/docker"
+  packages = [
+    "pkg/term",
+    "pkg/term/windows",
+  ]
+  pruneopts = ""
+  revision = "34b56728ed7101c6b3cc0405f5fd6351073a8253"
+
+[[projects]]
+  digest = "1:feefedc34fd965a481be51e27b2b074aed9187f1cce72a8bad1f496fb91079f0"
   name = "github.com/docker/machine"
   packages = [
     "libmachine/drivers",
@@ -26,24 +40,24 @@
     "version",
   ]
   pruneopts = ""
-  revision = "a650a404fc3e006fea17b12615266168db79c776"
-  version = "v0.7.0"
-
-[[projects]]
-  digest = "1:b7bd35fac5fa82d544fe31bb0e7e622051f5357726fbe65350a31759638ab443"
-  name = "github.com/dutangp/docker-machine-driver-cloudstack"
-  packages = ["."]
-  pruneopts = ""
-  revision = "eacb137441fd5be4763d04f0066d6796719c5672"
-  version = "v0.1.6"
+  revision = "cce350d75c529cf6e77328d9dd0477357e04a776"
+  version = "v0.16.1"
 
 [[projects]]
   branch = "master"
-  digest = "1:28e0faf2a154950df895471260b0faf7da3ad977343cbc62069be0a92c27b3b5"
+  digest = "1:9bd851b9090834e1c16547e8e02b0ae80d04b0167e9e5e1e49914a49320ba2b1"
   name = "github.com/dutangp/go-cloudstack"
   packages = ["cloudstack"]
   pruneopts = ""
-  revision = "e1b6af040a29bf6492c8e6b3787e50ca31621048"
+  revision = "9085d12865b6cc3abf0bcb85bfc4a27f302b9ede"
+
+[[projects]]
+  digest = "1:0f51cee70b0d254dbc93c22666ea2abf211af81c1701a96d04e2284b408621db"
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
+  pruneopts = ""
+  revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
+  version = "v1.0.2"
 
 [[projects]]
   digest = "1:1d7e1867c49a6dd9856598ef7c3123604ea3daabf5b83f303ff457bcbc410b1d"
@@ -54,15 +68,41 @@
   version = "v0.8.1"
 
 [[projects]]
-  digest = "1:6586399f3db6d596401c67b272ee24e6aedf2e9d5c0f057638287b8e122617b1"
+  digest = "1:631ea4a52a20ca54eceb1077e8c7e553a4f86a58639824825d9259374f7c362f"
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  pruneopts = ""
+  revision = "8bdbc7bcc01dcbb8ec23dc8a28e332258d25251f"
+  version = "v1.4.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:5b3e9450868bcf9ecbca2b01ac04f142255b5744d89ec97e1ceedf57d4522645"
   name = "golang.org/x/crypto"
   packages = [
     "curve25519",
+    "ed25519",
+    "ed25519/internal/edwards25519",
+    "internal/chacha20",
+    "internal/subtle",
+    "poly1305",
     "ssh",
     "ssh/terminal",
   ]
   pruneopts = ""
-  revision = "beef0f4390813b96e8e68fd78570396d0f4751fc"
+  revision = "22d7a77e9e5f409e934ed268692e56707cd169e5"
+
+[[projects]]
+  branch = "master"
+  digest = "1:677902b7cbbfa124deba62fc56aaa9ec7ad76ab7c45d42f76c973d3e7a1ef109"
+  name = "golang.org/x/sys"
+  packages = [
+    "cpu",
+    "unix",
+    "windows",
+  ]
+  pruneopts = ""
+  revision = "61b9204099cb1bebc803c9ffb9b2d3acd9d457d9"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -74,7 +114,6 @@
     "github.com/docker/machine/libmachine/mcnflag",
     "github.com/docker/machine/libmachine/ssh",
     "github.com/docker/machine/libmachine/state",
-    "github.com/dutangp/docker-machine-driver-cloudstack",
     "github.com/dutangp/go-cloudstack/cloudstack",
     "github.com/pkg/errors",
   ]
