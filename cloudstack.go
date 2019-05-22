@@ -451,8 +451,7 @@ func (d *Driver) PreCreateCheck() error {
 
 func (d *Driver) GoSleep(sec int) {
 	rand.Seed(time.Now().UnixNano())
-	n := rand.Intn(10) // n will be between 0 and 10
-	fmt.Sprintf("Sleeping %d seconds...", n)
+	n := rand.Intn(sec) // n will be between 0 and 10
 	time.Sleep(time.Duration(n)*time.Second)
 }
 
@@ -551,8 +550,8 @@ func (d *Driver) Create() error {
 	d.MacAddress = vm.Nic[0].Macaddress
 
 	// Add IP to Infoblox
-	d.GoSleep(20)
 	log.Info("Add the Machine in Infoblox...")
+	d.GoSleep(20)
 
 	url := "https://dns.cloudsys.tmcs/wapi/v2.7.3/record:host?_return_fields%2B=name,ipv4addrs&_return_as_object=1"
 	data := []byte(`{
@@ -602,7 +601,7 @@ func (d *Driver) Create() error {
 		return fmt.Errorf("too many call to InfoBlox.")
 	}
 
-	d.GoSleep(20)
+	d.GoSleep(30)
 
 	// if d.NetworkType == "Basic" {
 	// 	d.PublicIP = d.PrivateIP
