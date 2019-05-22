@@ -8,6 +8,10 @@ import (
 	"io/ioutil"
 	"strings"
 	"crypto/md5"
+	"net/http"
+	"crypto/tls"
+	"math/rand"
+	"net"
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/mcnflag"
@@ -15,9 +19,6 @@ import (
 	"github.com/docker/machine/libmachine/state"
 	"github.com/pkg/errors"
 	"github.com/dutangp/go-cloudstack/cloudstack"
-	"net/http"
-	"crypto/tls"
-	"math/rand"
 )
 
 const (
@@ -448,8 +449,14 @@ func (d *Driver) PreCreateCheck() error {
 	return d.checkInstance()
 }
 
-func (d *Driver) PostInfoblox(url string, data []byte) error {
+func (d *Driver) GoSleep(sec int) {
+	rand.Seed(time.Now().UnixNano())
+	n := rand.Intn(10) // n will be between 0 and 10
+	fmt.Sprintf("Sleeping %d seconds...", n)
+	time.Sleep(time.Duration(n)*time.Second)
+}
 
+func (d *Driver) PostInfoblox(url string, data []byte) error {
 	log.Debugf("Json send %s\n", data)
 
 	tr := &http.Transport{
@@ -473,7 +480,7 @@ func (d *Driver) PostInfoblox(url string, data []byte) error {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Warnf("Error reading response. ", err)
-		return err
+		 return err
 	}
 	defer resp.Body.Close()
 
@@ -483,11 +490,6 @@ func (d *Driver) PostInfoblox(url string, data []byte) error {
 	}
 
 	log.Debugf("%s\n", body)
-
-	rand.Seed(time.Now().UnixNano())
- n := rand.Intn(10) // n will be between 0 and 10
- log.Info("Sleeping %d seconds...", n)
- time.Sleep(time.Duration(n)*time.Second)
 
 	return nil
 }
@@ -549,9 +551,10 @@ func (d *Driver) Create() error {
 	d.MacAddress = vm.Nic[0].Macaddress
 
 	// Add IP to Infoblox
+	d.GoSleep(20)
 	log.Info("Add the Machine in Infoblox...")
-	url := "https://dns.cloudsys.tmcs/wapi/v2.7.3/record:host?_return_fields%2B=name,ipv4addrs&_return_as_object=1"
 
+	url := "https://dns.cloudsys.tmcs/wapi/v2.7.3/record:host?_return_fields%2B=name,ipv4addrs&_return_as_object=1"
 	data := []byte(`{
 		"name":"`+d.DisplayName+`",
 		"ipv4addrs":[{
@@ -560,21 +563,46 @@ func (d *Driver) Create() error {
 		}]
 	}`)
 
-	if err := d.PostInfoblox(url, data); err != nil {
-		return err
+ call := 1
+	for call <= 10 {
+		ips, err := net.LookupIP(d.DisplayName)
+
+		if err != nil {
+			d.GoSleep(10)
+			log.Info("Add the Machine in Infoblox...")
+			d.PostInfoblox(url, data)
+		} else {
+			log.Debugf("IP found %s...", ips)
+			break
+		}
+
+		call++
+	}
+
+ if call > 10 {
+		return fmt.Errorf("too many call to InfoBlox.")
 	}
 
 	// Restart Infoblox
-	log.Info("Restarting Infoblox...")
+	log.Info("Restarting Infoblox Services...")
 	url = "https://dns.cloudsys.tmcs/wapi/v2.7.3/grid/b25lLmNsdXN0ZXIkMA:syseng?_function=restartservices"
-
 	data = []byte(`{"member_order" : "SIMULTANEOUSLY","service_option": "ALL"}`)
 
-	if err := d.PostInfoblox(url, data); err != nil {
-		return err
+	call = 1
+	for call <= 10 {
+		d.GoSleep(10)
+		log.Info("Restarting Infoblox Services...")
+		if err := d.PostInfoblox(url, data); err == nil {
+			break
+		}
+		call++
+ }
+
+	if call > 10 {
+		return fmt.Errorf("too many call to InfoBlox.")
 	}
 
-	time.Sleep(10 * time.Second)
+	d.GoSleep(20)
 
 	// if d.NetworkType == "Basic" {
 	// 	d.PublicIP = d.PrivateIP
