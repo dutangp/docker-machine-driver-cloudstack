@@ -69,7 +69,7 @@ type Driver struct {
 	DiskOffering         string
 	DiskOfferingID       string
 	DiskSize             int
-	DiskRootSize				     int
+	DiskRootSize				 int
 	Network              string
 	NetworkID            string
 	Zone                 string
@@ -510,6 +510,7 @@ func (d *Driver) Create() error {
 	d.Tags = append(d.Tags,"environment:production")
 	d.Tags = append(d.Tags,"product:" + d.ProductCode)
 	d.Tags = append(d.Tags,"productcode:" + d.ProductCode)
+	d.Tags = append(d.Tags,"family:centos-7" )
 	d.Tags = append(d.Tags,"techorg:intl")
 
 	p.SetHostname(d.DisplayName)
@@ -553,7 +554,6 @@ func (d *Driver) Create() error {
 
 	// Add IP to Infoblox
 	log.Info("Add the Machine in Infoblox...")
-	d.GoSleep(20)
 
 	url := "https://dns.cloudsys.tmcs/wapi/v2.7.3/record:host?_return_fields%2B=name,ipv4addrs&_return_as_object=1"
 	data := []byte(`{
@@ -566,11 +566,10 @@ func (d *Driver) Create() error {
 
  call := 1
 	for call <= 10 {
+		d.GoSleep(20)
 		log.Debugf("Check IP in Infoblox %s", d.DisplayName)
-		//ips, err := net.LookupIP(d.DisplayName)
 		r := net.Resolver{PreferGo: true}
 		ctx := context.Background()
-
 		ips, err := r.LookupIPAddr(ctx, d.DisplayName)
 
 		if err != nil {
