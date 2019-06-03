@@ -12,6 +12,7 @@ import (
 	"crypto/tls"
 	"math/rand"
 	"net"
+	"context"
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/mcnflag"
@@ -68,7 +69,7 @@ type Driver struct {
 	DiskOffering         string
 	DiskOfferingID       string
 	DiskSize             int
-	DiskRootSize				 int
+	DiskRootSize				     int
 	Network              string
 	NetworkID            string
 	Zone                 string
@@ -451,8 +452,9 @@ func (d *Driver) PreCreateCheck() error {
 
 func (d *Driver) GoSleep(sec int) {
 	rand.Seed(time.Now().UnixNano())
-	n := rand.Intn(sec) // n will be between 0 and 10
-	time.Sleep(time.Duration(n)*time.Second)
+	n := time.Duration(rand.Intn(sec))*time.Second // n will be between 0 and 10
+	log.Debugf("sleep for %s seconds", n)
+	time.Sleep(n)
 }
 
 func (d *Driver) PostInfoblox(url string, data []byte) error {
@@ -564,14 +566,21 @@ func (d *Driver) Create() error {
 
  call := 1
 	for call <= 10 {
-		ips, err := net.LookupIP(d.DisplayName)
+		log.Debugf("Check IP in Infoblox %s", d.DisplayName)
+		//ips, err := net.LookupIP(d.DisplayName)
+		r := net.Resolver{PreferGo: true}
+		ctx := context.Background()
+
+		ips, err := r.LookupIPAddr(ctx, d.DisplayName)
 
 		if err != nil {
+			log.Debugf("err: %s", err)
+			log.Debugf("IP not found...")
 			d.GoSleep(10)
 			log.Info("Add the Machine in Infoblox...")
 			d.PostInfoblox(url, data)
 		} else {
-			log.Debugf("IP found %s...", ips)
+			log.Debugf("IP found %s", ips)
 			break
 		}
 
