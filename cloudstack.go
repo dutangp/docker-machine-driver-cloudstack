@@ -56,6 +56,7 @@ type Driver struct {
   MacAddress           string
 	SSHKeyPair           string
 	SSHPublickey         string
+	SSHKeyPath					 string
 	SSHManage            bool
 	PrivateIP            string
 	CIDRList             []string
@@ -80,6 +81,8 @@ type Driver struct {
 	Project              string
 	ProjectID            string
 	Tags                 []string
+	TagEnvironment       string
+	TagFamily					   string
 	DomainName           string
 	DisplayName          string
 	ProductCode          string
@@ -149,10 +152,10 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Value:  "/var/lib/rancher/management-state/ssh/id_rsa",
 			EnvVar: "CLOUDSTACK_SSH_KEYKEY",
 		},
-    mcnflag.BoolFlag{
-      Name:   "cloudstack-ssh-manage",
-      Usage:  "CloudStack SSH Management",
-    },
+  mcnflag.BoolFlag{
+    Name:   "cloudstack-ssh-manage",
+    Usage:  "CloudStack SSH Management",
+  },
 		mcnflag.StringSliceFlag{
 			Name:  "cloudstack-cidr",
 			Usage: "Source CIDR to give access to the machine. default 0.0.0.0/0",
@@ -213,6 +216,14 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 		mcnflag.StringSliceFlag{
 			Name:  "cloudstack-resource-tag",
 			Usage: "key:value resource tags to be created",
+		},
+		mcnflag.StringFlag{
+			Name:  "cloudstack-tag-environment",
+			Usage: "resource tag define the environment",
+		},
+		mcnflag.StringFlag{
+			Name:  "cloudstack-tag-family",
+			Usage: "resource tag define the OS family",
 		},
 		mcnflag.StringFlag{
 			Name:   "cloudstack-disk-offering",
@@ -315,6 +326,8 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.CIDRList = flags.StringSlice("cloudstack-cidr")
 	d.Expunge = flags.Bool("cloudstack-expunge")
 	d.Tags = flags.StringSlice("cloudstack-resource-tag")
+	d.TagEnvironment = flags.String("cloudstack-tag-environment")
+	d.TagFamily = flags.String("cloudstack-tag-family")
 	d.DeleteVolumes = flags.Bool("cloudstack-delete-volumes")
 	d.DiskSize = flags.Int("cloudstack-disk-size")
 	d.DiskRootSize = flags.Int("cloudstack-root-disk-size")
@@ -507,11 +520,16 @@ func (d *Driver) Create() error {
 	p.SetName(strings.Replace(d.DisplayName, ".", "-", -1))
 	p.SetDisplayname(d.DisplayName)
 
-	d.Tags = append(d.Tags,"environment:production")
 	d.Tags = append(d.Tags,"product:" + d.ProductCode)
 	d.Tags = append(d.Tags,"productcode:" + d.ProductCode)
-	d.Tags = append(d.Tags,"family:centos-7" )
 	d.Tags = append(d.Tags,"techorg:intl")
+
+	if d.TagFamily != "" {
+		d.Tags = append(d.Tags,"family:" + d.TagFamily)
+ }
+	if d.TagEnvironment != "" {
+		d.Tags = append(d.Tags,"environment:" + d.TagEnvironment)
+	}
 
 	p.SetHostname(d.DisplayName)
 	//log.Infof("Setting Keypair for VM: %s", d.SSHKeyPair)
