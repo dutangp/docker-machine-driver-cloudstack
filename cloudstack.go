@@ -149,7 +149,7 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 		mcnflag.StringFlag{
 			Name:   "cloudstack-ssh-publickey",
 			Usage:  "CloudStack SSH publickey",
-			Value:  "/var/lib/rancher/management-state/ssh/id_rsa",
+			Value:  "/usr/lib/ssh/id_rsa",
 			EnvVar: "CLOUDSTACK_SSH_KEYKEY",
 		},
   mcnflag.BoolFlag{
@@ -303,7 +303,7 @@ func (d *Driver) GetSSHUsername() string {
 
 func (d *Driver) GetSSHPublickey() string {
 	if d.SSHPublickey == "" {
-		d.SSHPublickey = "/var/lib/rancher/management-state/ssh/id_rsa"
+		d.SSHPublickey = "/usr/lib/ssh/id_rsa"
 	}
 	return d.SSHPublickey
 }
@@ -1145,7 +1145,7 @@ func (d *Driver) checkInstance() error {
 
 func (d *Driver) tmcopySSHKey() error {
 	var destinationFile string
-	destinationFile = "/var/lib/rancher/management-state/node/nodes/" + d.MachineName + "/machines/" + d.MachineName + "/id_rsa"
+	destinationFile = "/management-state/node/nodes/" + d.MachineName + "/machines/" + d.MachineName + "/id_rsa"
 
 	var sourceFile string
 	sourceFile = d.SSHPublickey
