@@ -44,8 +44,8 @@ type Driver struct {
 	APIURL               string
 	APIKey               string
 	SecretKey            string
-	IBuser							 string
-	IBpassword					 string
+	IBuser               string
+	IBpassword           string
 	HTTPGETOnly          bool
 	JobTimeOut           int64
 	UsePrivateIP         bool
@@ -53,10 +53,10 @@ type Driver struct {
 	PublicIP             string
 	PublicIPID           string
 	DisassociatePublicIP bool
-  MacAddress           string
+	MacAddress           string
 	SSHKeyPair           string
 	SSHPublickey         string
-	SSHKeyPath					 string
+	SSHKeyPath           string
 	SSHManage            bool
 	PrivateIP            string
 	CIDRList             []string
@@ -70,7 +70,7 @@ type Driver struct {
 	DiskOffering         string
 	DiskOfferingID       string
 	DiskSize             int
-	DiskRootSize				 int
+	DiskRootSize         int
 	Network              string
 	NetworkID            string
 	Zone                 string
@@ -82,7 +82,7 @@ type Driver struct {
 	ProjectID            string
 	Tags                 []string
 	TagEnvironment       string
-	TagFamily					   string
+	TagFamily            string
 	DomainName           string
 	DisplayName          string
 	ProductCode          string
