@@ -1,25 +1,25 @@
 package cloudstack
 
 import (
-	"encoding/base64"
 	"bytes"
-	"time"
-	"fmt"
-	"io/ioutil"
-	"strings"
-	"crypto/md5"
-	"net/http"
-	"crypto/tls"
-	"math/rand"
-	"net"
 	"context"
+	"crypto/md5"
+	"crypto/tls"
+	"encoding/base64"
+	"fmt"
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/ssh"
 	"github.com/docker/machine/libmachine/state"
-	"github.com/pkg/errors"
 	"github.com/dutangp/go-cloudstack/cloudstack"
+	"github.com/pkg/errors"
+	"io/ioutil"
+	"math/rand"
+	"net"
+	"net/http"
+	"strings"
+	"time"
 )
 
 const (
@@ -73,6 +73,7 @@ type Driver struct {
 	DiskRootSize         int
 	Network              string
 	NetworkID            string
+	NetworkCidr          string
 	Zone                 string
 	ZoneID               string
 	NetworkType          string
@@ -152,10 +153,10 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Value:  "/usr/lib/ssh/id_rsa",
 			EnvVar: "CLOUDSTACK_SSH_KEYKEY",
 		},
-  mcnflag.BoolFlag{
-    Name:   "cloudstack-ssh-manage",
-    Usage:  "CloudStack SSH Management",
-  },
+		mcnflag.BoolFlag{
+			Name:  "cloudstack-ssh-manage",
+			Usage: "CloudStack SSH Management",
+		},
 		mcnflag.StringSliceFlag{
 			Name:  "cloudstack-cidr",
 			Usage: "Source CIDR to give access to the machine. default 0.0.0.0/0",
@@ -360,11 +361,11 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	if err := d.setDiskOffering(flags.String("cloudstack-disk-offering"), flags.String("cloudstack-disk-offering-id")); err != nil {
 		return err
 	}
-	if d.DomainName == ""{
+	if d.DomainName == "" {
 		return &configError{option: "domainname"}
 	}
 	if d.DisplayName == "" {
-	 d.DisplayName = d.MachineName + "." + d.DomainName
+		d.DisplayName = d.MachineName + "." + d.DomainName
 	}
 	d.SSHKeyPair = d.DisplayName
 	if d.APIURL == "" {
@@ -465,7 +466,7 @@ func (d *Driver) PreCreateCheck() error {
 
 func (d *Driver) GoSleep(sec int) {
 	rand.Seed(time.Now().UnixNano())
-	n := time.Duration(rand.Intn(sec))*time.Second // n will be between 0 and 10
+	n := time.Duration(rand.Intn(sec)) * time.Second // n will be between 0 and 10
 	log.Debugf("sleep for %s seconds", n)
 	time.Sleep(n)
 }
@@ -494,7 +495,7 @@ func (d *Driver) PostInfoblox(url string, data []byte) error {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Warnf("Error reading response. ", err)
-		 return err
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -520,15 +521,15 @@ func (d *Driver) Create() error {
 	p.SetName(strings.Replace(d.DisplayName, ".", "-", -1))
 	p.SetDisplayname(d.DisplayName)
 
-	d.Tags = append(d.Tags,"product:" + d.ProductCode)
-	d.Tags = append(d.Tags,"productcode:" + d.ProductCode)
-	d.Tags = append(d.Tags,"techorg:intl")
+	d.Tags = append(d.Tags, "product:"+d.ProductCode)
+	d.Tags = append(d.Tags, "productcode:"+d.ProductCode)
+	d.Tags = append(d.Tags, "techorg:intl")
 
 	if d.TagFamily != "" {
-		d.Tags = append(d.Tags,"family:" + d.TagFamily)
- }
+		d.Tags = append(d.Tags, "family:"+d.TagFamily)
+	}
 	if d.TagEnvironment != "" {
-		d.Tags = append(d.Tags,"environment:" + d.TagEnvironment)
+		d.Tags = append(d.Tags, "environment:"+d.TagEnvironment)
 	}
 
 	p.SetHostname(d.DisplayName)
@@ -558,7 +559,7 @@ func (d *Driver) Create() error {
 		}
 		p.SetSecuritygroupnames([]string{d.MachineName})
 	}
- p.SetStartvm(false)
+	p.SetStartvm(false)
 
 	log.Info("Creating CloudStack instance...")
 	vm, err := cs.VirtualMachine.DeployVirtualMachine(p)
@@ -575,14 +576,14 @@ func (d *Driver) Create() error {
 
 	url := "https://dns.cloudsys.tmcs/wapi/v2.7.3/record:host?_return_fields%2B=name,ipv4addrs&_return_as_object=1"
 	data := []byte(`{
-		"name":"`+d.DisplayName+`",
+		"name":"` + d.DisplayName + `",
 		"ipv4addrs":[{
-			"ipv4addr":"func:nextavailableip:`+d.Network+`,default",
-			"mac":"`+d.MacAddress+`"
+			"ipv4addr":"func:nextavailableip:` + d.NetworkCidr + `,default",
+			"mac":"` + d.MacAddress + `"
 		}]
 	}`)
 
- call := 1
+	call := 1
 	for call <= 10 {
 		d.GoSleep(20)
 		log.Debugf("Check IP in Infoblox %s", d.DisplayName)
@@ -604,7 +605,7 @@ func (d *Driver) Create() error {
 		call++
 	}
 
- if call > 10 {
+	if call > 10 {
 		return fmt.Errorf("too many call to InfoBlox.")
 	}
 
@@ -621,7 +622,7 @@ func (d *Driver) Create() error {
 			break
 		}
 		call++
- }
+	}
 
 	if call > 10 {
 		return fmt.Errorf("too many call to InfoBlox.")
@@ -661,15 +662,15 @@ func (d *Driver) Create() error {
 	d.SSHPort, err = d.GetSSHPort()
 
 	if d.SSHManage {
-  if err := d.tmcopySSHKey(); err != nil {
-		 return err
-	 }
- }
+		if err := d.tmcopySSHKey(); err != nil {
+			return err
+		}
+	}
 
 	log.Info("Starting CloudStack instance...")
 	if err := d.Start(); err != nil {
-	 return err
- }
+		return err
+	}
 
 	if err != nil {
 		return err
@@ -937,9 +938,11 @@ func (d *Driver) setNetwork(networkName string, networkID string) error {
 
 	d.NetworkID = network.Id
 	d.Network = network.Name
+	d.NetworkCidr = network.Cidr
 
 	log.Debugf("network id: %q", d.NetworkID)
 	log.Debugf("network name: %q", d.Network)
+	log.Debugf("network cidr: %q", d.NetworkCidr)
 
 	return nil
 }
