@@ -457,11 +457,15 @@ func (d *Driver) GetState() (state.State, error) {
 
 // PreCreateCheck allows for pre-create operations to make sure a driver is ready for creation
 func (d *Driver) PreCreateCheck() error {
-	// if err := d.checkKeyPair(); err != nil {
-	// 	return err
-	// }
+	if err := d.checkKeyPair(); err != nil {
+		return err
+	}
 
-	return d.checkInstance()
+	if err := d.checkInstance(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (d *Driver) GoSleep(sec int) {
@@ -472,7 +476,8 @@ func (d *Driver) GoSleep(sec int) {
 }
 
 func (d *Driver) PostInfoblox(url string, data []byte) error {
-	log.Debugf("Json send %s\n", data)
+	log.Infof("PostInfoblox: %s", url)
+	log.Infof("Json send %s\n", data)
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -480,7 +485,7 @@ func (d *Driver) PostInfoblox(url string, data []byte) error {
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
-		log.Warnf("Error reading request. ", err)
+		log.Infof("Error reading request. ", err)
 	}
 
 	// Set headers
@@ -494,6 +499,7 @@ func (d *Driver) PostInfoblox(url string, data []byte) error {
 	// Send request
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Infof("%s", err)
 		log.Warnf("Error reading response. ", err)
 		return err
 	}
@@ -501,10 +507,10 @@ func (d *Driver) PostInfoblox(url string, data []byte) error {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Warnf("Error reading body. ", err)
+		log.Infof("Error reading body. ", err)
 	}
 
-	log.Debugf("%s\n", body)
+	log.Infof("%s\n", body)
 
 	return nil
 }
@@ -513,9 +519,9 @@ func (d *Driver) PostInfoblox(url string, data []byte) error {
 func (d *Driver) Create() error {
 	cs := d.getClient()
 
-	// if err := d.createKeyPair(); err != nil {
-	// 	return err
-	// }
+	if err := d.createKeyPair(); err != nil {
+		return err
+	}
 	p := cs.VirtualMachine.NewDeployVirtualMachineParams(
 		d.ServiceOfferingID, d.TemplateID, d.ZoneID)
 	p.SetName(strings.Replace(d.DisplayName, ".", "-", -1))
@@ -533,8 +539,8 @@ func (d *Driver) Create() error {
 	}
 
 	p.SetHostname(d.DisplayName)
-	//log.Infof("Setting Keypair for VM: %s", d.SSHKeyPair)
-	//p.SetKeypair(d.SSHKeyPair)
+	log.Infof("Setting Keypair for VM: %s", d.SSHKeyPair)
+	p.SetKeypair(d.SSHKeyPair)
 	if d.UserData != "" {
 		p.SetUserdata(d.UserData)
 	}
@@ -592,8 +598,8 @@ func (d *Driver) Create() error {
 		ips, err := r.LookupIPAddr(ctx, d.DisplayName)
 
 		if err != nil {
-			log.Debugf("err: %s", err)
-			log.Debugf("IP not found...")
+			log.Infof("err: %s", err)
+			log.Infof("IP not found...")
 			d.GoSleep(10)
 			log.Info("Add the Machine in Infoblox...")
 			d.PostInfoblox(url, data)
@@ -612,7 +618,7 @@ func (d *Driver) Create() error {
 	// Restart Infoblox
 	log.Info("Restarting Infoblox Services...")
 	url = "https://dns.cloudsys.tmcs/wapi/v2.7.3/grid/b25lLmNsdXN0ZXIkMA:syseng?_function=restartservices"
-	data = []byte(`{"member_order" : "SIMULTANEOUSLY","service_option": "ALL"}`)
+	data = []byte(`{"restart_option" : "RESTART_IF_NEEDED", "member_order" : "SIMULTANEOUSLY", "service_option" : "ALL"}`)
 
 	call = 1
 	for call <= 10 {
@@ -940,9 +946,9 @@ func (d *Driver) setNetwork(networkName string, networkID string) error {
 	d.Network = network.Name
 	d.NetworkCidr = network.Cidr
 
-	log.Debugf("network id: %q", d.NetworkID)
-	log.Debugf("network name: %q", d.Network)
-	log.Debugf("network cidr: %q", d.NetworkCidr)
+	log.Infof("network id: %q", d.NetworkID)
+	log.Infof("network name: %q", d.Network)
+	log.Infof("network cidr: %q", d.NetworkCidr)
 
 	return nil
 }
