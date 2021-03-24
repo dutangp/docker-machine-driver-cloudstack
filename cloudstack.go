@@ -80,12 +80,10 @@ type Driver struct {
 	UserData             string
 	Project              string
 	ProjectID            string
+	TMTags               string
 	Tags                 []string
-	TagEnvironment       string
-	TagFamily            string
 	DomainName           string
 	DisplayName          string
-	ProductCode          string
 }
 
 // GetCreateFlags registers the flags this driver adds to
@@ -144,18 +142,16 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:   "cloudstack-ssh-user",
 			Usage:  "CloudStack SSH user",
 			Value:  "root",
-			EnvVar: "CLOUDSTACK_SSH_USER",
 		},
 		mcnflag.StringFlag{
 			Name:   "cloudstack-ssh-publickey",
 			Usage:  "CloudStack SSH publickey",
 			Value:  "/usr/lib/ssh/id_rsa",
-			EnvVar: "CLOUDSTACK_SSH_KEYKEY",
 		},
-  mcnflag.BoolFlag{
-    Name:   "cloudstack-ssh-manage",
-    Usage:  "CloudStack SSH Management",
-  },
+		mcnflag.BoolFlag{
+			Name:   "cloudstack-ssh-manage",
+			Usage:  "CloudStack SSH Management",
+		},
 		mcnflag.StringSliceFlag{
 			Name:  "cloudstack-cidr",
 			Usage: "Source CIDR to give access to the machine. default 0.0.0.0/0",
@@ -167,7 +163,6 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 		mcnflag.StringFlag{
 			Name:   "cloudstack-template",
 			Usage:  "CloudStack template",
-			EnvVar: "CLOUDSTACK_TEMPLATE",
 		},
 		mcnflag.StringFlag{
 			Name:  "cloudstack-template-id",
@@ -176,7 +171,6 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 		mcnflag.StringFlag{
 			Name:   "cloudstack-service-offering",
 			Usage:  "CloudStack service offering",
-			EnvVar: "CLOUDSTACK_SERVICE_OFFERING",
 		},
 		mcnflag.StringFlag{
 			Name:  "cloudstack-service-offering-id",
@@ -185,7 +179,6 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 		mcnflag.StringFlag{
 			Name:   "cloudstack-network",
 			Usage:  "CloudStack network",
-			EnvVar: "CLOUDSTACK_NETWORK",
 		},
 		mcnflag.StringFlag{
 			Name:  "cloudstack-network-id",
@@ -194,7 +187,6 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 		mcnflag.StringFlag{
 			Name:   "cloudstack-zone",
 			Usage:  "CloudStack zone",
-			EnvVar: "CLOUDSTACK_ZONE",
 		},
 		mcnflag.StringFlag{
 			Name:  "cloudstack-zone-id",
@@ -203,7 +195,10 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 		mcnflag.StringFlag{
 			Name:   "cloudstack-userdata-file",
 			Usage:  "CloudStack Userdata file",
-			EnvVar: "CLOUDSTACK_USERDATA_FILE",
+		},
+		mcnflag.StringFlag{
+			Name:  "cloudstack-userdata-base64",
+			Usage: "CloudStack Userdata Base64",
 		},
 		mcnflag.StringFlag{
 			Name:  "cloudstack-project",
@@ -213,22 +208,13 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:  "cloudstack-project-id",
 			Usage: "CloudStack project id",
 		},
-		mcnflag.StringSliceFlag{
-			Name:  "cloudstack-resource-tag",
-			Usage: "key:value resource tags to be created",
-		},
 		mcnflag.StringFlag{
-			Name:  "cloudstack-tag-environment",
-			Usage: "resource tag define the environment",
-		},
-		mcnflag.StringFlag{
-			Name:  "cloudstack-tag-family",
-			Usage: "resource tag define the OS family",
+			Name:  "cloudstack-tm-tag",
+			Usage: "key:value TM tags to be created",
 		},
 		mcnflag.StringFlag{
 			Name:   "cloudstack-disk-offering",
 			Usage:  "Cloudstack disk offering",
-			EnvVar: "CLOUDSTACK_DISK_OFFERING",
 		},
 		mcnflag.StringFlag{
 			Name:  "cloudstack-disk-offering-id",
@@ -237,12 +223,10 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 		mcnflag.IntFlag{
 			Name:   "cloudstack-disk-size",
 			Usage:  "Disk offering custom size",
-			EnvVar: "CLOUDSTACK_CUSTOM_DISK_SIZE",
 		},
 		mcnflag.IntFlag{
 			Name:   "cloudstack-root-disk-size",
 			Usage:  "Disk Root size",
-			EnvVar: "CLOUDSTACK_ROOT_DISK_SIZE",
 		},
 		mcnflag.BoolFlag{
 			Name:  "cloudstack-delete-volumes",
@@ -255,10 +239,6 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 		mcnflag.StringFlag{
 			Name:  "cloudstack-domainname",
 			Usage: "Cloudstack virtual machine domainname",
-		},
-		mcnflag.StringFlag{
-			Name:  "cloudstack-productcode",
-			Usage: "Cloudstack virtual machine productcode",
 		},
 	}
 }
@@ -302,9 +282,6 @@ func (d *Driver) GetSSHUsername() string {
 }
 
 func (d *Driver) GetSSHPublickey() string {
-	if d.SSHPublickey == "" {
-		d.SSHPublickey = "/usr/lib/ssh/id_rsa"
-	}
 	return d.SSHPublickey
 }
 
@@ -325,15 +302,12 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.SSHManage = flags.Bool("cloudstack-ssh-manage")
 	d.CIDRList = flags.StringSlice("cloudstack-cidr")
 	d.Expunge = flags.Bool("cloudstack-expunge")
-	d.Tags = flags.StringSlice("cloudstack-resource-tag")
-	d.TagEnvironment = flags.String("cloudstack-tag-environment")
-	d.TagFamily = flags.String("cloudstack-tag-family")
+	d.TMTags = flags.String("cloudstack-tm-tag")
 	d.DeleteVolumes = flags.Bool("cloudstack-delete-volumes")
 	d.DiskSize = flags.Int("cloudstack-disk-size")
 	d.DiskRootSize = flags.Int("cloudstack-root-disk-size")
 	d.DisplayName = flags.String("cloudstack-displayname")
 	d.DomainName = flags.String("cloudstack-domainname")
-	d.ProductCode = flags.String("cloudstack-productcode")
 	d.SwarmMaster = flags.Bool("swarm-master")
 	d.SwarmDiscovery = flags.String("swarm-discovery")
 	if err := d.setProject(flags.String("cloudstack-project"), flags.String("cloudstack-project-id")); err != nil {
@@ -354,7 +328,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	if err := d.setPublicIP(flags.String("cloudstack-public-ip")); err != nil {
 		return err
 	}
-	if err := d.setUserData(flags.String("cloudstack-userdata-file")); err != nil {
+	if err := d.setUserData(flags.String("cloudstack-userdata-file"), flags.String("cloudstack-userdata-base64")); err != nil {
 		return err
 	}
 	if err := d.setDiskOffering(flags.String("cloudstack-disk-offering"), flags.String("cloudstack-disk-offering-id")); err != nil {
@@ -364,7 +338,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 		return &configError{option: "domainname"}
 	}
 	if d.DisplayName == "" {
-	 d.DisplayName = d.MachineName + "." + d.DomainName
+		d.DisplayName = d.MachineName + "." + d.DomainName
 	}
 	d.SSHKeyPair = d.DisplayName
 	if d.APIURL == "" {
@@ -456,11 +430,13 @@ func (d *Driver) GetState() (state.State, error) {
 
 // PreCreateCheck allows for pre-create operations to make sure a driver is ready for creation
 func (d *Driver) PreCreateCheck() error {
-	// if err := d.checkKeyPair(); err != nil {
-	// 	return err
-	// }
-
-	return d.checkInstance()
+	if err := d.checkKeyPair(); err != nil {
+		return err
+	}
+	if err := d.checkInstance(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (d *Driver) GoSleep(sec int) {
@@ -511,29 +487,21 @@ func (d *Driver) PostInfoblox(url string, data []byte) error {
 // Create a host using the driver's config
 func (d *Driver) Create() error {
 	cs := d.getClient()
-
-	// if err := d.createKeyPair(); err != nil {
-	// 	return err
-	// }
+	/*
+	if !d.SSHManage {
+		if err := d.createKeyPair(); err != nil {
+			return err
+		}
+		log.Infof("Setting Keypair for VM: %s", d.SSHKeyPair)
+		p.SetKeypair(d.SSHKeyPair)
+	}
+	*/
 	p := cs.VirtualMachine.NewDeployVirtualMachineParams(
 		d.ServiceOfferingID, d.TemplateID, d.ZoneID)
 	p.SetName(strings.Replace(d.DisplayName, ".", "-", -1))
 	p.SetDisplayname(d.DisplayName)
-
-	d.Tags = append(d.Tags,"product:" + d.ProductCode)
-	d.Tags = append(d.Tags,"productcode:" + d.ProductCode)
-	d.Tags = append(d.Tags,"techorg:intl")
-
-	if d.TagFamily != "" {
-		d.Tags = append(d.Tags,"family:" + d.TagFamily)
- }
-	if d.TagEnvironment != "" {
-		d.Tags = append(d.Tags,"environment:" + d.TagEnvironment)
-	}
-
 	p.SetHostname(d.DisplayName)
-	//log.Infof("Setting Keypair for VM: %s", d.SSHKeyPair)
-	//p.SetKeypair(d.SSHKeyPair)
+	d.Tags = strings.Fields(d.TMTags)
 	if d.UserData != "" {
 		p.SetUserdata(d.UserData)
 	}
@@ -558,7 +526,7 @@ func (d *Driver) Create() error {
 		}
 		p.SetSecuritygroupnames([]string{d.MachineName})
 	}
- p.SetStartvm(false)
+	p.SetStartvm(false)
 
 	log.Info("Creating CloudStack instance...")
 	vm, err := cs.VirtualMachine.DeployVirtualMachine(p)
@@ -571,7 +539,7 @@ func (d *Driver) Create() error {
 	d.MacAddress = vm.Nic[0].Macaddress
 
 	// Add IP to Infoblox
-	log.Info("Add the Machine in Infoblox...")
+	log.Info("Checking if DNS already exists...")
 
 	url := "https://dns.cloudsys.tmcs/wapi/v2.7.3/record:host?_return_fields%2B=name,ipv4addrs&_return_as_object=1"
 	data := []byte(`{
@@ -582,9 +550,8 @@ func (d *Driver) Create() error {
 		}]
 	}`)
 
- call := 1
+	call := 1
 	for call <= 10 {
-		d.GoSleep(20)
 		log.Debugf("Check IP in Infoblox %s", d.DisplayName)
 		r := net.Resolver{PreferGo: true}
 		ctx := context.Background()
@@ -593,9 +560,9 @@ func (d *Driver) Create() error {
 		if err != nil {
 			log.Debugf("err: %s", err)
 			log.Debugf("IP not found...")
-			d.GoSleep(10)
-			log.Info("Add the Machine in Infoblox...")
+			log.Info("Add the Machine in DNS...")
 			d.PostInfoblox(url, data)
+			d.GoSleep(5)
 		} else {
 			log.Debugf("IP found %s", ips)
 			break
@@ -604,18 +571,17 @@ func (d *Driver) Create() error {
 		call++
 	}
 
- if call > 10 {
+	if call > 10 {
 		return fmt.Errorf("too many call to InfoBlox.")
 	}
 
 	// Restart Infoblox
-	log.Info("Restarting Infoblox Services...")
 	url = "https://dns.cloudsys.tmcs/wapi/v2.7.3/grid/b25lLmNsdXN0ZXIkMA:syseng?_function=restartservices"
-	data = []byte(`{"member_order" : "SIMULTANEOUSLY","service_option": "ALL"}`)
+	data = []byte(`{"restart_option" : "RESTART_IF_NEEDED", "member_order" : "SIMULTANEOUSLY", "service_option" : "ALL"}`)
 
 	call = 1
 	for call <= 10 {
-		d.GoSleep(10)
+		d.GoSleep(2)
 		log.Info("Restarting Infoblox Services...")
 		if err := d.PostInfoblox(url, data); err == nil {
 			break
@@ -627,30 +593,32 @@ func (d *Driver) Create() error {
 		return fmt.Errorf("too many call to InfoBlox.")
 	}
 
-	d.GoSleep(30)
+	d.GoSleep(20)
 
-	// if d.NetworkType == "Basic" {
-	// 	d.PublicIP = d.PrivateIP
-	// }
-	// if d.NetworkType == "Advanced" && !d.UsePrivateIP {
-	// 	if d.PublicIPID == "" {
-	// 		if err := d.associatePublicIP(); err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// 	if err := d.configureFirewallRules(); err != nil {
-	// 		return err
-	// 	}
-	// 	if d.UsePortForward {
-	// 		if err := d.configurePortForwardingRules(); err != nil {
-	// 			return err
-	// 		}
-	// 	} else {
-	// 		if err := d.enableStaticNat(); err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// }
+	/*
+	if d.NetworkType == "Basic" {
+		d.PublicIP = d.PrivateIP
+	}
+	if d.NetworkType == "Advanced" && !d.UsePrivateIP {
+		if d.PublicIPID == "" {
+			if err := d.associatePublicIP(); err != nil {
+				return err
+			}
+		}
+		if err := d.configureFirewallRules(); err != nil {
+			return err
+		}
+		if d.UsePortForward {
+			if err := d.configurePortForwardingRules(); err != nil {
+				return err
+			}
+		} else {
+			if err := d.enableStaticNat(); err != nil {
+				return err
+			}
+		}
+	}
+	*/
 	if len(d.Tags) > 0 {
 		if err := d.createTags(); err != nil {
 			return err
@@ -661,15 +629,15 @@ func (d *Driver) Create() error {
 	d.SSHPort, err = d.GetSSHPort()
 
 	if d.SSHManage {
-  if err := d.tmcopySSHKey(); err != nil {
-		 return err
-	 }
- }
+		if err := d.tmcopySSHKey(); err != nil {
+			return err
+		}
+	}
 
 	log.Info("Starting CloudStack instance...")
 	if err := d.Start(); err != nil {
-	 return err
- }
+		return err
+	}
 
 	if err != nil {
 		return err
@@ -970,31 +938,22 @@ func (d *Driver) setPublicIP(publicip string) error {
 	return nil
 }
 
-func (d *Driver) setUserData(userDataFile string) error {
-	var data []byte
-	var err error
-	if userDataFile == "" {
-		return nil
-	}
+func (d *Driver) setUserData(userDataFile string, userDataBase64 string) error {
+        d.UserDataFile = userDataFile
+        d.UserData = userDataBase64
 
-	if strings.HasPrefix(userDataFile, "http") {
-		data, err = d.readUserDataFromURL(userDataFile)
+        if d.UserDataFile == "" {
+                return nil
+        }
 
-		if err != nil {
-			return fmt.Errorf("failed to read userdata from url %s: %s", d.UserDataFile, err)
-		}
+        data, err := ioutil.ReadFile(d.UserDataFile)
+        if err != nil {
+                return fmt.Errorf("Failed to read user data file: %s", err)
+        }
 
-	} else {
+        d.UserData = base64.StdEncoding.EncodeToString(data)
 
-		data, err = ioutil.ReadFile(userDataFile)
-		if err != nil {
-			return fmt.Errorf("failed to read user data file from path %s: %s", d.UserDataFile, err)
-		}
-	}
-
-	d.UserData = base64.StdEncoding.EncodeToString(data)
-
-	return nil
+        return nil
 }
 
 func (d *Driver) readUserDataFromURL(userDataURL string) ([]byte, error) {
