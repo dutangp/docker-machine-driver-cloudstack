@@ -441,7 +441,7 @@ func (d *Driver) PreCreateCheck() error {
 
 func (d *Driver) GoSleep(sec int) {
 	rand.Seed(time.Now().UnixNano())
-	n := time.Duration(rand.Intn(sec))*time.Second // n will be between 0 and 10
+	n := time.Duration(rand.Intn(sec)) * time.Second // n will be between 0 and 10
 	log.Debugf("sleep for %s seconds", n)
 	time.Sleep(n)
 }
@@ -580,7 +580,7 @@ func (d *Driver) Create() error {
 	data = []byte(`{"restart_option" : "RESTART_IF_NEEDED", "member_order" : "SIMULTANEOUSLY", "service_option" : "ALL"}`)
 
 	call = 1
-	for call <= 10 {
+	for call <= 5 {
 		d.GoSleep(2)
 		log.Info("Restarting Infoblox Services...")
 		if err := d.PostInfoblox(url, data); err == nil {
@@ -593,7 +593,7 @@ func (d *Driver) Create() error {
 		return fmt.Errorf("too many call to InfoBlox.")
 	}
 
-	d.GoSleep(20)
+	d.GoSleep(5)
 
 	/*
 	if d.NetworkType == "Basic" {
