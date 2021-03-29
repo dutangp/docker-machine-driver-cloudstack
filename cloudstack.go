@@ -1,25 +1,25 @@
 package cloudstack
 
 import (
-	"encoding/base64"
 	"bytes"
-	"time"
-	"fmt"
-	"io/ioutil"
-	"strings"
-	"crypto/md5"
-	"net/http"
-	"crypto/tls"
-	"math/rand"
-	"net"
 	"context"
+	"crypto/md5"
+	"crypto/tls"
+	"encoding/base64"
+	"fmt"
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/ssh"
 	"github.com/docker/machine/libmachine/state"
-	"github.com/pkg/errors"
 	"github.com/dutangp/go-cloudstack/cloudstack"
+	"github.com/pkg/errors"
+	"io/ioutil"
+	"math/rand"
+	"net"
+	"net/http"
+	"strings"
+	"time"
 )
 
 const (
@@ -73,6 +73,7 @@ type Driver struct {
 	DiskRootSize         int
 	Network              string
 	NetworkID            string
+	NetworkCidr          string
 	Zone                 string
 	ZoneID               string
 	NetworkType          string
@@ -149,8 +150,8 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Value:  "/usr/lib/ssh/id_rsa",
 		},
 		mcnflag.BoolFlag{
-			Name:   "cloudstack-ssh-manage",
-			Usage:  "CloudStack SSH Management",
+			Name:  "cloudstack-ssh-manage",
+			Usage: "CloudStack SSH Management",
 		},
 		mcnflag.StringSliceFlag{
 			Name:  "cloudstack-cidr",
@@ -334,7 +335,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	if err := d.setDiskOffering(flags.String("cloudstack-disk-offering"), flags.String("cloudstack-disk-offering-id")); err != nil {
 		return err
 	}
-	if d.DomainName == ""{
+	if d.DomainName == "" {
 		return &configError{option: "domainname"}
 	}
 	if d.DisplayName == "" {
@@ -433,9 +434,11 @@ func (d *Driver) PreCreateCheck() error {
 	if err := d.checkKeyPair(); err != nil {
 		return err
 	}
+
 	if err := d.checkInstance(); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -447,7 +450,8 @@ func (d *Driver) GoSleep(sec int) {
 }
 
 func (d *Driver) PostInfoblox(url string, data []byte) error {
-	log.Debugf("Json send %s\n", data)
+	log.Infof("PostInfoblox: %s", url)
+	log.Infof("Json send %s\n", data)
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -455,7 +459,7 @@ func (d *Driver) PostInfoblox(url string, data []byte) error {
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
-		log.Warnf("Error reading request. ", err)
+		log.Infof("Error reading request. ", err)
 	}
 
 	// Set headers
@@ -469,17 +473,18 @@ func (d *Driver) PostInfoblox(url string, data []byte) error {
 	// Send request
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Infof("%s", err)
 		log.Warnf("Error reading response. ", err)
-		 return err
+		return err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Warnf("Error reading body. ", err)
+		log.Infof("Error reading body. ", err)
 	}
 
-	log.Debugf("%s\n", body)
+	log.Infof("%s\n", body)
 
 	return nil
 }
@@ -487,21 +492,25 @@ func (d *Driver) PostInfoblox(url string, data []byte) error {
 // Create a host using the driver's config
 func (d *Driver) Create() error {
 	cs := d.getClient()
-	/*
 	if !d.SSHManage {
 		if err := d.createKeyPair(); err != nil {
 			return err
 		}
-		log.Infof("Setting Keypair for VM: %s", d.SSHKeyPair)
-		p.SetKeypair(d.SSHKeyPair)
 	}
-	*/
+
+	if err := d.createKeyPair(); err != nil {
+		return err
+	}
 	p := cs.VirtualMachine.NewDeployVirtualMachineParams(
 		d.ServiceOfferingID, d.TemplateID, d.ZoneID)
 	p.SetName(strings.Replace(d.DisplayName, ".", "-", -1))
 	p.SetDisplayname(d.DisplayName)
 	p.SetHostname(d.DisplayName)
 	d.Tags = strings.Fields(d.TMTags)
+	if !d.SSHManage {
+		log.Infof("Setting Keypair for VM: %s", d.SSHKeyPair)
+		p.SetKeypair(d.SSHKeyPair)
+	}
 	if d.UserData != "" {
 		p.SetUserdata(d.UserData)
 	}
@@ -543,10 +552,10 @@ func (d *Driver) Create() error {
 
 	url := "https://dns.cloudsys.tmcs/wapi/v2.7.3/record:host?_return_fields%2B=name,ipv4addrs&_return_as_object=1"
 	data := []byte(`{
-		"name":"`+d.DisplayName+`",
+		"name":"` + d.DisplayName + `",
 		"ipv4addrs":[{
-			"ipv4addr":"func:nextavailableip:`+d.Network+`,default",
-			"mac":"`+d.MacAddress+`"
+			"ipv4addr":"func:nextavailableip:` + d.NetworkCidr + `,default",
+			"mac":"` + d.MacAddress + `"
 		}]
 	}`)
 
@@ -587,10 +596,10 @@ func (d *Driver) Create() error {
 			break
 		}
 		call++
- }
+	}
 
 	if call > 10 {
-		return fmt.Errorf("too many call to InfoBlox.")
+		return fmt.Errorf("too many call to DNS")
 	}
 
 	d.GoSleep(5)
@@ -905,9 +914,11 @@ func (d *Driver) setNetwork(networkName string, networkID string) error {
 
 	d.NetworkID = network.Id
 	d.Network = network.Name
+	d.NetworkCidr = network.Cidr
 
-	log.Debugf("network id: %q", d.NetworkID)
-	log.Debugf("network name: %q", d.Network)
+	log.Infof("network id: %q", d.NetworkID)
+	log.Infof("network name: %q", d.Network)
+	log.Infof("network cidr: %q", d.NetworkCidr)
 
 	return nil
 }
