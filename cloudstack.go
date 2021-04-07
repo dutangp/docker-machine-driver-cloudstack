@@ -55,7 +55,7 @@ type Driver struct {
 	DisassociatePublicIP bool
 	MacAddress           string
 	SSHKeyPair           string
-	SSHPublickey         string
+	SSHPrivateKeyBase64  string
 	SSHKeyPath           string
 	SSHManage            bool
 	PrivateIP            string
@@ -145,9 +145,8 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Value:  "root",
 		},
 		mcnflag.StringFlag{
-			Name:   "cloudstack-ssh-publickey",
-			Usage:  "CloudStack SSH publickey",
-			Value:  "/usr/lib/ssh/id_rsa",
+			Name:   "cloudstack-ssh-privatekey-base64",
+			Usage:  "CloudStack SSH privateKey base64",
 		},
 		mcnflag.BoolFlag{
 			Name:  "cloudstack-ssh-manage",
@@ -282,10 +281,6 @@ func (d *Driver) GetSSHUsername() string {
 	return d.SSHUser
 }
 
-func (d *Driver) GetSSHPublickey() string {
-	return d.SSHPublickey
-}
-
 // SetConfigFromFlags configures the driver with the object that was returned
 // by RegisterCreateFlags
 func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
@@ -299,8 +294,8 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.HTTPGETOnly = flags.Bool("cloudstack-http-get-only")
 	d.JobTimeOut = int64(flags.Int("cloudstack-timeout"))
 	d.SSHUser = flags.String("cloudstack-ssh-user")
-	d.SSHPublickey = flags.String("cloudstack-ssh-publickey")
 	d.SSHManage = flags.Bool("cloudstack-ssh-manage")
+	d.SSHPrivateKeyBase64 = flags.String("cloudstack-ssh-privatekey-base64")
 	d.CIDRList = flags.StringSlice("cloudstack-cidr")
 	d.Expunge = flags.Bool("cloudstack-expunge")
 	d.TMTags = flags.String("cloudstack-tm-tag")
@@ -431,8 +426,10 @@ func (d *Driver) GetState() (state.State, error) {
 
 // PreCreateCheck allows for pre-create operations to make sure a driver is ready for creation
 func (d *Driver) PreCreateCheck() error {
-	if err := d.checkKeyPair(); err != nil {
-		return err
+	if !d.SSHManage {
+		if err := d.checkKeyPair(); err != nil {
+			return err
+		}
 	}
 
 	if err := d.checkInstance(); err != nil {
@@ -450,8 +447,8 @@ func (d *Driver) GoSleep(sec int) {
 }
 
 func (d *Driver) PostInfoblox(url string, data []byte) error {
-	log.Infof("PostInfoblox: %s", url)
-	log.Infof("Json send %s\n", data)
+	log.Debugf("PostInfoblox: %s", url)
+	log.Debugf("Json send %s\n", data)
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -496,10 +493,6 @@ func (d *Driver) Create() error {
 		if err := d.createKeyPair(); err != nil {
 			return err
 		}
-	}
-
-	if err := d.createKeyPair(); err != nil {
-		return err
 	}
 	p := cs.VirtualMachine.NewDeployVirtualMachineParams(
 		d.ServiceOfferingID, d.TemplateID, d.ZoneID)
@@ -916,9 +909,9 @@ func (d *Driver) setNetwork(networkName string, networkID string) error {
 	d.Network = network.Name
 	d.NetworkCidr = network.Cidr
 
-	log.Infof("network id: %q", d.NetworkID)
-	log.Infof("network name: %q", d.Network)
-	log.Infof("network cidr: %q", d.NetworkCidr)
+	log.Debugf("network id: %q", d.NetworkID)
+	log.Debugf("network name: %q", d.Network)
+	log.Debugf("network cidr: %q", d.NetworkCidr)
 
 	return nil
 }
@@ -1117,17 +1110,14 @@ func (d *Driver) tmcopySSHKey() error {
 	var destinationFile string
 	destinationFile = "/management-state/node/nodes/" + d.MachineName + "/machines/" + d.MachineName + "/id_rsa"
 
-	var sourceFile string
-	sourceFile = d.SSHPublickey
-
-	log.Infof("Copy SSH public key...")
-
-	input, err := ioutil.ReadFile(sourceFile)
+	data, err := base64.StdEncoding.DecodeString(d.SSHPrivateKeyBase64)
 	if err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile(destinationFile, input, 0600)
+	log.Infof("Copy SSH public key...")
+
+	err = ioutil.WriteFile(destinationFile, data, 0600)
 	if err != nil {
 		return fmt.Errorf("Error creating file", err)
 	}
