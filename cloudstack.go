@@ -481,7 +481,7 @@ func (d *Driver) PostInfoblox(url string, data []byte) error {
 		log.Infof("Error reading body. ", err)
 	}
 
-	log.Infof("%s\n", body)
+	log.Debugf("%s\n", body)
 
 	return nil
 }
@@ -1115,7 +1115,7 @@ func (d *Driver) tmcopySSHKey() error {
 		return err
 	}
 
-	log.Infof("Copy SSH public key...")
+	log.Infof("Copy SSH key...")
 
 	err = ioutil.WriteFile(destinationFile, data, 0600)
 	if err != nil {
