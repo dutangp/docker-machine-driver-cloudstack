@@ -140,13 +140,13 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage: "CloudStack Public IP",
 		},
 		mcnflag.StringFlag{
-			Name:   "cloudstack-ssh-user",
-			Usage:  "CloudStack SSH user",
-			Value:  "root",
+			Name:  "cloudstack-ssh-user",
+			Usage: "CloudStack SSH user",
+			Value: "root",
 		},
 		mcnflag.StringFlag{
-			Name:   "cloudstack-ssh-privatekey-base64",
-			Usage:  "CloudStack SSH privateKey base64",
+			Name:  "cloudstack-ssh-privatekey-base64",
+			Usage: "CloudStack SSH privateKey base64",
 		},
 		mcnflag.BoolFlag{
 			Name:  "cloudstack-ssh-manage",
@@ -161,40 +161,40 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage: "Whether or not to expunge the machine upon removal",
 		},
 		mcnflag.StringFlag{
-			Name:   "cloudstack-template",
-			Usage:  "CloudStack template",
+			Name:  "cloudstack-template",
+			Usage: "CloudStack template",
 		},
 		mcnflag.StringFlag{
 			Name:  "cloudstack-template-id",
 			Usage: "Cloudstack template id",
 		},
 		mcnflag.StringFlag{
-			Name:   "cloudstack-service-offering",
-			Usage:  "CloudStack service offering",
+			Name:  "cloudstack-service-offering",
+			Usage: "CloudStack service offering",
 		},
 		mcnflag.StringFlag{
 			Name:  "cloudstack-service-offering-id",
 			Usage: "CloudStack service offering id",
 		},
 		mcnflag.StringFlag{
-			Name:   "cloudstack-network",
-			Usage:  "CloudStack network",
+			Name:  "cloudstack-network",
+			Usage: "CloudStack network",
 		},
 		mcnflag.StringFlag{
 			Name:  "cloudstack-network-id",
 			Usage: "CloudStack network id",
 		},
 		mcnflag.StringFlag{
-			Name:   "cloudstack-zone",
-			Usage:  "CloudStack zone",
+			Name:  "cloudstack-zone",
+			Usage: "CloudStack zone",
 		},
 		mcnflag.StringFlag{
 			Name:  "cloudstack-zone-id",
 			Usage: "CloudStack zone id",
 		},
 		mcnflag.StringFlag{
-			Name:   "cloudstack-userdata-file",
-			Usage:  "CloudStack Userdata file",
+			Name:  "cloudstack-userdata-file",
+			Usage: "CloudStack Userdata file",
 		},
 		mcnflag.StringFlag{
 			Name:  "cloudstack-userdata-base64",
@@ -213,20 +213,20 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage: "key:value TM tags to be created",
 		},
 		mcnflag.StringFlag{
-			Name:   "cloudstack-disk-offering",
-			Usage:  "Cloudstack disk offering",
+			Name:  "cloudstack-disk-offering",
+			Usage: "Cloudstack disk offering",
 		},
 		mcnflag.StringFlag{
 			Name:  "cloudstack-disk-offering-id",
 			Usage: "Cloudstack disk offering id",
 		},
 		mcnflag.IntFlag{
-			Name:   "cloudstack-disk-size",
-			Usage:  "Disk offering custom size",
+			Name:  "cloudstack-disk-size",
+			Usage: "Disk offering custom size",
 		},
 		mcnflag.IntFlag{
-			Name:   "cloudstack-root-disk-size",
-			Usage:  "Disk Root size",
+			Name:  "cloudstack-root-disk-size",
+			Usage: "Disk Root size",
 		},
 		mcnflag.BoolFlag{
 			Name:  "cloudstack-delete-volumes",
@@ -598,28 +598,28 @@ func (d *Driver) Create() error {
 	d.GoSleep(5)
 
 	/*
-	if d.NetworkType == "Basic" {
-		d.PublicIP = d.PrivateIP
-	}
-	if d.NetworkType == "Advanced" && !d.UsePrivateIP {
-		if d.PublicIPID == "" {
-			if err := d.associatePublicIP(); err != nil {
+		if d.NetworkType == "Basic" {
+			d.PublicIP = d.PrivateIP
+		}
+		if d.NetworkType == "Advanced" && !d.UsePrivateIP {
+			if d.PublicIPID == "" {
+				if err := d.associatePublicIP(); err != nil {
+					return err
+				}
+			}
+			if err := d.configureFirewallRules(); err != nil {
 				return err
 			}
-		}
-		if err := d.configureFirewallRules(); err != nil {
-			return err
-		}
-		if d.UsePortForward {
-			if err := d.configurePortForwardingRules(); err != nil {
-				return err
-			}
-		} else {
-			if err := d.enableStaticNat(); err != nil {
-				return err
+			if d.UsePortForward {
+				if err := d.configurePortForwardingRules(); err != nil {
+					return err
+				}
+			} else {
+				if err := d.enableStaticNat(); err != nil {
+					return err
+				}
 			}
 		}
-	}
 	*/
 	if len(d.Tags) > 0 {
 		if err := d.createTags(); err != nil {
@@ -943,21 +943,21 @@ func (d *Driver) setPublicIP(publicip string) error {
 }
 
 func (d *Driver) setUserData(userDataFile string, userDataBase64 string) error {
-        d.UserDataFile = userDataFile
-        d.UserData = userDataBase64
+	d.UserDataFile = userDataFile
+	d.UserData = userDataBase64
 
-        if d.UserDataFile == "" {
-                return nil
-        }
+	if d.UserDataFile == "" {
+		return nil
+	}
 
-        data, err := ioutil.ReadFile(d.UserDataFile)
-        if err != nil {
-                return fmt.Errorf("Failed to read user data file: %s", err)
-        }
+	data, err := ioutil.ReadFile(d.UserDataFile)
+	if err != nil {
+		return fmt.Errorf("Failed to read user data file: %s", err)
+	}
 
-        d.UserData = base64.StdEncoding.EncodeToString(data)
+	d.UserData = base64.StdEncoding.EncodeToString(data)
 
-        return nil
+	return nil
 }
 
 func (d *Driver) readUserDataFromURL(userDataURL string) ([]byte, error) {
