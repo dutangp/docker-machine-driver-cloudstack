@@ -667,9 +667,12 @@ func (d *Driver) Remove() error {
 	// if err := d.disassociatePublicIP(); err != nil {
 	// 	return err
 	// }
-	// if err := d.deleteKeyPair(); err != nil {
-	// 	return err
-	// }
+	if !d.SSHManage {
+		log.Info("Removing SSH Keypair...")
+		if err := d.deleteKeyPair(); err != nil {
+			return err
+		}
+	}
 	log.Info("Removing CloudStack instance...")
 	if _, err := cs.VirtualMachine.DestroyVirtualMachine(p); err != nil {
 		return err
