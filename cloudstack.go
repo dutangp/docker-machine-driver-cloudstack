@@ -46,6 +46,7 @@ type Driver struct {
 	SecretKey            string
 	IBuser               string
 	IBpassword           string
+	IBwait               int
 	HTTPGETOnly          bool
 	JobTimeOut           int64
 	UsePrivateIP         bool
@@ -115,6 +116,12 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:   "cloudstack-infoblox-password",
 			Usage:  "CloudStack Infoblox password",
 			EnvVar: "CLOUDSTACK_INFOBLOX_PASSWORD",
+		},
+		mcnflag.IntFlag{
+			Name:   "cloudstack-infoblox-wait",
+			Usage:  "time(seconds) allowed to check IB calls",
+			EnvVar: "CLOUDSTACK_INFOBLOX_WAIT",
+			Value:  5,
 		},
 		mcnflag.BoolFlag{
 			Name:   "cloudstack-http-get-only",
@@ -289,6 +296,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.SecretKey = flags.String("cloudstack-secret-key")
 	d.IBuser = flags.String("cloudstack-infoblox-user")
 	d.IBpassword = flags.String("cloudstack-infoblox-password")
+	d.IBwait = flags.Int("cloudstack-infoblox-wait")
 	d.UsePrivateIP = flags.Bool("cloudstack-use-private-address")
 	d.UsePortForward = flags.Bool("cloudstack-use-port-forward")
 	d.HTTPGETOnly = flags.Bool("cloudstack-http-get-only")
@@ -564,7 +572,7 @@ func (d *Driver) Create() error {
 			log.Debugf("IP not found...")
 			log.Info("Add the Machine in DNS...")
 			d.PostInfoblox(url, data)
-			d.GoSleep(5)
+			d.GoSleep(d.IBwait)
 		} else {
 			log.Debugf("IP found %s", ips)
 			break
@@ -583,8 +591,8 @@ func (d *Driver) Create() error {
 
 	call = 1
 	for call <= 5 {
-		d.GoSleep(2)
 		log.Info("Restarting Infoblox Services...")
+		d.GoSleep(d.IBwait)
 		if err := d.PostInfoblox(url, data); err == nil {
 			break
 		}
@@ -595,7 +603,7 @@ func (d *Driver) Create() error {
 		return fmt.Errorf("too many call to DNS")
 	}
 
-	d.GoSleep(5)
+	d.GoSleep(d.IBwait)
 
 	/*
 	if d.NetworkType == "Basic" {
